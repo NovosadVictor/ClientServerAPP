@@ -4,15 +4,21 @@
 
 
 SELECT::SELECT() {
+	_phone = Phone();
 	_service = 0;
 	_dateMin = Date();
 	_dateMax = Date(2100, 12, 30, 23, 59, 59);
 }
 
-SELECT::SELECT(int service, Date dateMin, Date dateMax) {
+SELECT::SELECT(Phone phone, int service, Date dateMin, Date dateMax) {
+	_phone = phone;
 	_service = service;
 	_dateMin = dateMin;
 	_dateMax = dateMax;
+}
+
+Phone SELECT::GetPhone() const {
+	return  _phone;
 }
 
 int SELECT::GetService() const {
