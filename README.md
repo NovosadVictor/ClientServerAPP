@@ -9,7 +9,9 @@ SELECT (
         [period,service],
         [service],
         [period],
-        [ALL]
+        [phone, period],
+        [phone],
+        [ALL],
 )
 
 INSERT (
@@ -19,7 +21,9 @@ INSERT (
 
 DELETE (
         [phone, service, period],
+        [phone, period],
         [phone],
+        [service, period],
         [service],
         [period],
         [ALL]
