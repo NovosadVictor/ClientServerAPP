@@ -9,15 +9,15 @@ Phone::Phone() {
 
 Phone::Phone(const char *phone) {
 	if (strlen(phone) != 13)
-		throw 1;
+		throw 3;
 	for (size_t i = 0; i < strlen(phone); ++i) {
 		if (i == 3 || i == 7 || i == 10) {
 			if (phone[i] != '-')
-				throw 2;
+				throw 4;
 		}
 		else {
 			if (!isdigit(phone[i]))
-				throw 3;
+				throw 5;
 		}
 	}
 	memcpy(_number, phone, 13);

@@ -27,7 +27,7 @@ void Billing::SetCorrect(Phone phone, int service, Date dateTime, double sum) {
 		_dateTime = dateTime;
 		_sum = sum;
 	} else
-		throw 1;
+		throw std::invalid_argument("incorrect service and/or sum\n");
 }
 
 void Billing::ChangeService(int service) {

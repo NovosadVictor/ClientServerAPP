@@ -58,7 +58,7 @@ void Date::SetCorrect(int y, int m, int d, int h, int min, int sec) {
 		SetDate();
 	}
 	else
-		throw 1;
+		throw 2;
 }
 
 void Date::SetDate() {

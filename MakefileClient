@@ -3,8 +3,8 @@ CFLAGS=-c
 
 all: client
 
-client: client.o  billing.o phone.o date.o
-	$(CC) client.o  billing.o date.o phone.o -o client
+client: client.o billing.o phone.o date.o
+	$(CC) client.o billing.o date.o phone.o -o client
 
 billing.o: billing.cpp billing.h
 	$(CC) $(CFLAGS) billing.cpp
