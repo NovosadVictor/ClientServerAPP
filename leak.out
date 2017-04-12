@@ -1,0 +1,10 @@
+S   0x4022f9   0x402e4d  # new normal but delete[] ; size 8
+O memAddr:   0xae3c20 memSize: 8 allocAddr:   0x4022f9 freeAddr:   0x402e4d # memory overwritten beyond allocated 8 bytes
+# 4 byte beyond area:
+# 31 00 cc dd 
+# abort; DUMP of current state
+# LeakReport
+# from new @ |      size  # Pointer Addr
+L 0x7f0c85127aa9          42  # 0xae3c70
+# total allocation requests:     58 ; max. mem used 0 kBytes
+# leak     42 Bytes	:-(

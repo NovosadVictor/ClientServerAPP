@@ -27,7 +27,7 @@ Parser::Parser(int &fd) {
         if (re == 0)
             break;
         if (re == -1)
-            throw std::invalid_argument("Error in read");
+            throw 1;
         _AllVector.push_back(billing);
     }
     _type = 0;
@@ -143,7 +143,7 @@ void Parser::ParseRequest(const char *request, int &fd) {
                   timeInfo->tm_min,
                   timeInfo->tm_sec
         );
-        GetInsert(INSERT(Phone(number), service, Date(date), sum), 0);
+        GetInsert(INSERT(Phone(number), service, Date(date), sum));
         return;
     }
     if (sscanf(&v[0], "INSERTphone=[%13s]service=[%d]date=[%4d-%02d-%02d:%02d:%02d:%02d]sum=[%lf]",
@@ -158,7 +158,7 @@ void Parser::ParseRequest(const char *request, int &fd) {
                    &sum) == 9) {
             number[13] = '\0';
             _type = 2;
-            GetInsert(INSERT(Phone(number), service, Date(year, month, day, hour, minute, second), sum), 1);
+            GetInsert(INSERT(Phone(number), service, Date(year, month, day, hour, minute, second), sum));
             return;
         }
     // END OF INSERT
@@ -286,7 +286,7 @@ void Parser::ParseRequest(const char *request, int &fd) {
     // END UPDATES
 
     // END REQUESTS
-    throw std::invalid_argument("Its not a request");
+    throw 2;
 }
 
 void Parser::GetSelect(SELECT select, int flag) {
@@ -336,17 +336,17 @@ void Parser::GetSelect(SELECT select, int flag) {
         }
     }
 	else
-		throw std::invalid_argument("Its not select");
+		throw 3;
 }
 
-void Parser::GetInsert(INSERT insert, int flag) {
+void Parser::GetInsert(INSERT insert) {
 	if (_type == 2) {
         Billing billing(insert.GetPhone(), insert.GetService(), insert.GetDate(), insert.GetSum());
         _AllVector.push_back(billing);
         return;
     }
 	else
-		throw std::invalid_argument("Its not insert");
+		throw 4;
 }
 
 void Parser::GetDelete(DELETE delete_, int flag) {
@@ -417,7 +417,7 @@ void Parser::GetDelete(DELETE delete_, int flag) {
         }
     }
     else
-        throw std::invalid_argument("Its not delete");
+        throw 1;
 }
 
 void Parser::GetUpdate(UPDATE update, int flag) {
@@ -467,7 +467,7 @@ void Parser::GetUpdate(UPDATE update, int flag) {
         }
     }
     else
-        throw std::invalid_argument("Its not update");
+        throw 2;
 
 }
 
@@ -486,7 +486,7 @@ void Parser::GetSave(int &fd) {
             throw std::invalid_argument("File does not open");
     }
     else
-        throw std::invalid_argument("Its not save");
+        throw 3;
 }
 
 std::vector<Billing> Parser::GetResponse() const {

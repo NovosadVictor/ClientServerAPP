@@ -58,7 +58,7 @@ void Date::SetCorrect(int y, int m, int d, int h, int min, int sec) {
 		SetDate();
 	}
 	else
-		throw std::invalid_argument("Incorrect date");
+		throw 1;
 }
 
 void Date::SetDate() {

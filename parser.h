@@ -17,7 +17,7 @@ public:
 	void ParseRequest(const char *request, int &fd);
 	int GetType() const;
     void GetSelect(SELECT select, int flag);
-	void GetInsert(INSERT insert, int flag);
+	void GetInsert(INSERT insert);
 	void GetDelete(DELETE delete_, int flag);
     void GetUpdate(UPDATE update, int flag);
 	void GetSave(int &fd);

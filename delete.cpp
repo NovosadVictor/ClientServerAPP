@@ -31,7 +31,7 @@ DELETE::DELETE() {
 DELETE::DELETE(int service, Phone phone, Date dateMin, Date dateMax) {
     _service = service;
     _phone = phone;
-    _dateMin = _dateMin;
+    _dateMin = dateMin;
     _dateMax = dateMax;
 }
 

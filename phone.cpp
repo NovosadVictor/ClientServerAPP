@@ -9,15 +9,15 @@ Phone::Phone() {
 
 Phone::Phone(const char *phone) {
 	if (strlen(phone) != 13)
-		throw std::invalid_argument("bad number");
+		throw 1;
 	for (size_t i = 0; i < strlen(phone); ++i) {
 		if (i == 3 || i == 7 || i == 10) {
 			if (phone[i] != '-')
-				throw std::invalid_argument("bad number");
+				throw 2;
 		}
 		else {
 			if (!isdigit(phone[i]))
-				throw std::invalid_argument("bad number");
+				throw 3;
 		}
 	}
 	memcpy(_number, phone, 13);
