@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdio>
 #include <vector>
+#include <stdexcept>
 
 #include "readWrite.h"
 
@@ -12,9 +13,6 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    char *host = new char[strlen(argv[2]) + 1];
-    memcpy(host, argv[2], strlen(argv[2]));
-    host[strlen(argv[2])] = '\0';
     struct sockaddr_in addr;
     int sd; // Socket Descriptor
     int port = atoi(argv[1]);
@@ -22,7 +20,7 @@ int main(int argc, char **argv) {
     memset(&addr, 0, sizeof addr);
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, host, &addr.sin_addr) < 1) {
+    if (inet_pton(AF_INET, argv[2], &addr.sin_addr) < 1) {
         fprintf(stderr, "Wrong host\n");
         return -1;
     }
@@ -43,9 +41,9 @@ int main(int argc, char **argv) {
         char message[1024];
         for (;;) {
             std::cout << "You can request\n>>>> ";
-            fgets(message, 1024, stdin);
+            if (fgets(message, 1024, stdin) == 0)
+                break;
             size_t len = strlen(message);
-            message[len - 1] = '\0';
             if (writeAll(sd, &len, sizeof(len)) != sizeof(len))
                 throw std::invalid_argument("Cant write length");
             if (writeAll(sd, message, len) != (ssize_t) len)
@@ -80,7 +78,7 @@ int main(int argc, char **argv) {
                     break;
             }
             if (status == 1) {
-                for (size_t i = 0; i < quantity; ++i) {
+                for (size_t i = 0; i < (size_t)quantity; ++i) {
                     size_t length;
                     if (readAll(sd, &length, sizeof(length)) != sizeof(length))
                         throw std::invalid_argument("Can`t read length");
@@ -106,7 +104,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Can't release file descriptor\n");
         return -1;
     }
-    delete host;
     return 0;
 }
 

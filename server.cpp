@@ -25,10 +25,6 @@ int main(int argc, char **argv) {
         std::cout << "Cant open file database.db" << std::endl;
         return -1;
     }
-
-    char *host = new char[strlen(argv[2]) + 1];
-    memcpy(host, argv[2], strlen(argv[2]));
-    host[strlen(argv[2])] = '\0';
     struct sockaddr_in addr;
     int sd; // Socket Descriptor
     int port = atoi(argv[1]);
@@ -39,7 +35,7 @@ int main(int argc, char **argv) {
     memset(&addr, 0, sizeof addr);    
     addr.sin_family = AF_INET;
     addr.sin_port   = htons(port);
-    if(inet_pton(AF_INET, host, &addr.sin_addr) < 1) {
+    if(inet_pton(AF_INET, argv[2], &addr.sin_addr) < 1) {
         fprintf(stderr, "Wrong host\n");
         return -1;
     }
@@ -88,7 +84,6 @@ int main(int argc, char **argv) {
     }
 
     puts("Done.");
-
     return 0;
 }
 
@@ -145,7 +140,9 @@ static void loop(int sd, int fd) {
                 char *request = new char[length];
                 memcpy(request, &buf[0], length - 1);
                 request[length - 1] = '\0';
+                std::cout << request << std::endl;
                 response.ParseRequest(request, fd);
+                delete request;
                 char firstAnswer[22];
                 snprintf(firstAnswer, 22, "Server:\n   status = %d", response.GetType());
                 firstAnswer[21] = '\0';
@@ -219,7 +216,6 @@ static void loop(int sd, int fd) {
                     if (writeAll(nsd, successAnswer, len) != (ssize_t) len)
                         throw 7;//std::invalid_argument("Cant write successAnswer");
                 }
-                delete request;
             }
             catch (int err) {
                 if (err != 7) {
