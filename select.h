@@ -8,16 +8,28 @@
 class SELECT {
 public:
 	SELECT();
-	SELECT(Phone phone, int service, Date dateMin, Date dateMax);
+
+	SELECT(Phone phone, int service, Date dateMin, Date dateMax, int sumMin, int sumMax);
+
 	Phone GetPhone() const;
+
 	int GetService() const;
+
 	Date GetMinDate() const;
+
 	Date GetMaxDate() const;
+
+	int GetMinSum() const;
+
+	int GetMaxSum() const;
+
 private:
+	Phone _phone;
 	int _service;
 	Date _dateMin;
 	Date _dateMax;
-	Phone _phone;
+	int _sumMin;
+	int _sumMax;
 };
 
 

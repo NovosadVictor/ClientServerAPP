@@ -16,6 +16,7 @@ public:
 	Parser(int &fd);
 	void ParseRequest(const char *request, int &fd);
 	int GetType() const;
+	size_t GetTotal() const;
     void GetSelect(SELECT select, int flag);
 	void GetInsert(INSERT insert);
 	void GetDelete(DELETE delete_, int flag);
@@ -23,6 +24,7 @@ public:
 	void GetSave(int &fd);
     std::vector<Billing> GetResponse() const;
 private:
+	size_t _total;
     int _type;
     std::vector<Billing> _AllVector;
     std::vector<Billing> _responseVector;

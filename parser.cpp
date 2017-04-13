@@ -34,10 +34,13 @@ Parser::Parser(int &fd) {
 }
 
 void Parser::ParseRequest(const char *request, int &fd) {
-    std::vector<char> v = DeleteSpaces(request);
+    _total = 0;
+    std::vector<char> v;
+    v = DeleteSpaces(request);
     int service;
     char number[14];
     int yearMin, monthMin, dayMin, yearMax, monthMax, dayMax;
+    int sumMin, sumMax;
     int x;
     // SAVE
     sscanf(&v[0], "SAVE%n", &x);
@@ -47,6 +50,24 @@ void Parser::ParseRequest(const char *request, int &fd) {
         return;
     }
     // SELECTS
+    if (sscanf(&v[0], "SELECTphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]sum=[%d,%d]",
+               number,
+               &service,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax,
+               &sumMin,
+               &sumMax) == 10) {
+        _type = 1;
+        number[13] = '\0';
+        GetSelect(SELECT(Phone(number),
+                         service, Date(yearMin, monthMin, dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), sumMin, sumMax), 1);
+        return;
+    }
     if (sscanf(&v[0], "SELECTphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
                number,
                &service,
@@ -60,13 +81,13 @@ void Parser::ParseRequest(const char *request, int &fd) {
         number[13] = '\0';
         GetSelect(SELECT(Phone(number),
                          service, Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 1);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 2);
         return;
     }
     if (sscanf(&v[0], "SELECTphone=[%13s]service=[%1d]", number, &service) == 2) {
         _type = 1;
         number[13] = '\0';
-        GetSelect(SELECT(Phone(number), service, Date(), Date()), 2);
+        GetSelect(SELECT(Phone(number), service, Date(), Date(), 0, 0), 3);
         return;
     }
     if (sscanf(&v[0], "SELECTphone=[%13s]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -81,7 +102,13 @@ void Parser::ParseRequest(const char *request, int &fd) {
         number[13] = '\0';
         GetSelect(SELECT(Phone(number),
                          0, Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 3);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 4);
+        return;
+    }
+    if (sscanf(&v[0], "SELECTphone=[%13s]sum=[%d,%d]", number, &sumMin, &sumMax) == 3) {
+        _type = 1;
+        number[13] = '\0';
+        GetSelect(SELECT(Phone(number), service, Date(), Date(), sumMin, sumMax), 5);
         return;
     }
     if (sscanf(&v[0], "SELECTservice=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -95,18 +122,26 @@ void Parser::ParseRequest(const char *request, int &fd) {
         _type = 1;
         GetSelect(SELECT(Phone(),
                          service, Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 4);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 6);
+        return;
+    }
+    if (sscanf(&v[0], "SELECTservice=[%1d]sum=[%d,%d]",
+               &service,
+               &sumMin,
+               &sumMax) == 3) {
+        _type = 1;
+        GetSelect(SELECT(Phone(), service, Date(), Date(), sumMin, sumMax), 7);
         return;
     }
     if (sscanf(&v[0], "SELECTphone=[%13s]", number) == 1) {
         number[13] = '\0';
         _type = 1;
-        GetSelect(SELECT(Phone(number), 0, Date(), Date()), 5);
+        GetSelect(SELECT(Phone(number), 0, Date(), Date(), 0, 0), 8);
         return;
     }
     if (sscanf(&v[0], "SELECTservice=[%1d]", &service) == 1) {
         _type = 1;
-        GetSelect(SELECT(Phone(), service, Date(), Date()), 6);
+        GetSelect(SELECT(Phone(), service, Date(), Date(), 0, 0), 9);
         return;
     }
     if (sscanf(&v[0], "SELECTperiod=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -120,13 +155,18 @@ void Parser::ParseRequest(const char *request, int &fd) {
         GetSelect(SELECT(Phone(),
                          0,
                          Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 7);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 10);
+        return;
+    }
+    if (sscanf(&v[0], "SELECTsum=[%d,%d]", &sumMin, &sumMax) == 2) {
+        _type = 1;
+        GetSelect(SELECT(Phone(), 0, Date(), Date(), sumMin, sumMax), 11);
         return;
     }
     sscanf(&v[0], "SELECTALL%n", &x);
     if (x == 9) {
         _type = 1;
-        GetSelect(SELECT(Phone(), 0, Date(), Date(2100, 12, 30, 23, 59, 59)), 8);
+        GetSelect(SELECT(Phone(), 0, Date(), Date(), 0, 0), 12);
         return;
     }
     // END OF SELECTS
@@ -165,6 +205,23 @@ void Parser::ParseRequest(const char *request, int &fd) {
     }
     // END OF INSERT
     // DELETES
+    if (sscanf(&v[0], "DELETEphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]sum=[%d,%d]",
+               number,
+               &service,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax,
+               &sumMin,
+               &sumMax) == 10) {
+        number[13] = '\0';
+        _type = 3;
+        GetDelete(DELETE(service, Phone(number), Date(yearMin, monthMin, dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), sumMin, sumMax), 1);
+        return;
+    }
     if (sscanf(&v[0], "DELETEphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
                number,
                &service,
@@ -177,13 +234,13 @@ void Parser::ParseRequest(const char *request, int &fd) {
         number[13] = '\0';
         _type = 3;
         GetDelete(DELETE(service, Phone(number), Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 1);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 2);
         return;
     }
     if (sscanf(&v[0], "DELETEphone=[%13s]service=[%1d]", number, &service) == 2) {
         number[13] = '\0';
         _type = 3;
-        GetDelete(DELETE(service, Phone(number), Date(), Date()), 2);
+        GetDelete(DELETE(service, Phone(number), Date(), Date(), 0, 0), 3);
         return;
     }
     if (sscanf(&v[0], "DELETEphone=[%13s]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -197,7 +254,13 @@ void Parser::ParseRequest(const char *request, int &fd) {
         number[13] = '\0';
         _type = 3;
         GetDelete(DELETE(0, Phone(number), Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 3);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 4);
+        return;
+    }
+    if (sscanf(&v[0], "DELETEphone=[%13s]sum=[%d,%d]", number, &sumMin, &sumMax) == 3) {
+        number[13] = '\0';
+        _type = 3;
+        GetDelete(DELETE(service, Phone(number), Date(), Date(), sumMin, sumMax), 5);
         return;
     }
     if (sscanf(&v[0], "DELETEservice=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -211,18 +274,24 @@ void Parser::ParseRequest(const char *request, int &fd) {
         number[13] = '\0';
         _type = 3;
         GetDelete(DELETE(service, Phone(), Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 4);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 6);
+        return;
+    }
+    if (sscanf(&v[0], "DELETEservice=[%1d]sum=[%d,%d]", &service, &sumMin, &sumMax) == 3) {
+        number[13] = '\0';
+        _type = 3;
+        GetDelete(DELETE(service, Phone(), Date(), Date(), sumMin, sumMax), 7);
         return;
     }
     if (sscanf(&v[0], "DELETEphone=[%13s]", number) == 1) {
         number[13] = '\0';
         _type = 3;
-        GetDelete(DELETE(0, Phone(number), Date(), Date(2100, 12, 30, 23, 59, 59)), 5);
+        GetDelete(DELETE(0, Phone(number), Date(), Date(), 0, 0), 8);
         return;
     }
     if (sscanf(&v[0], "DELETEservice=[%1d]", &service) == 1) {
         _type = 3;
-        GetDelete(DELETE(service, Phone(), Date(), Date(2100, 12, 30, 23, 59, 59)), 6);
+        GetDelete(DELETE(service, Phone(), Date(), Date(), 0, 0), 9);
         return;
     }
     if (sscanf(&v[0], "DELETEperiod=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -234,19 +303,49 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &dayMax) == 6) {
         _type = 3;
         GetDelete(DELETE(0, Phone(), Date(yearMin, monthMin, dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 7);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 10);
+        return;
+    }
+    if (sscanf(&v[0], "DELETEsum=[%d,%d]", &sumMin, &sumMax) == 2) {
+        _type = 3;
+        GetDelete(DELETE(0, Phone(), Date(), Date(), sumMin, sumMax), 11);
         return;
     }
     sscanf(&v[0], "DELETEALL%n", &x);
     if (x == 9) {
         _type = 3;
-        GetDelete(DELETE(0, Phone(), Date(), Date(2100, 12, 30, 23, 59, 59)), 8);
+        GetDelete(DELETE(0, Phone(), Date(), Date(), 0, 0), 12);
         return;
     }
     // END DELETES
     // UPDATES
     char numberFilter[14];
     int serviceFilter;
+    if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]sum=[%d,%d]",
+               number,
+               numberFilter,
+               &serviceFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax,
+               &sumMin,
+               &sumMax
+    ) == 11) {
+        _type = 4;
+        number[13] = '\0';
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(0, 0,
+                         Phone(number),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59),
+                         sumMin, sumMax), 1);
+        return;
+    }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
                number,
                numberFilter,
@@ -260,12 +359,12 @@ void Parser::ParseRequest(const char *request, int &fd) {
         _type = 4;
         number[13] = '\0';
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(0,
+        GetUpdate(UPDATE(0, 0,
                          Phone(number),
                          serviceFilter,
                          Phone(numberFilter),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 1);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 2);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]service=[%1d]",
@@ -275,11 +374,11 @@ void Parser::ParseRequest(const char *request, int &fd) {
         _type = 4;
         number[13] = '\0';
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(0,
+        GetUpdate(UPDATE(0, 0,
                          Phone(number),
                          serviceFilter,
                          Phone(numberFilter),
-                         Date(), Date()), 2);
+                         Date(), Date(), 0, 0), 3);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -294,12 +393,28 @@ void Parser::ParseRequest(const char *request, int &fd) {
         _type = 4;
         number[13] = '\0';
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(0,
+        GetUpdate(UPDATE(0, 0,
                          Phone(number),
                          0,
                          Phone(numberFilter),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 3);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 4);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]sum=[%d,%d]",
+               number,
+               numberFilter,
+               &sumMin,
+               &sumMax) == 4) {
+        _type = 4;
+        number[13] = '\0';
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(0, 0,
+                         Phone(number),
+                         0,
+                         Phone(numberFilter),
+                         Date(),
+                         Date(), sumMin, sumMax), 5);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREservice=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -313,25 +428,40 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &dayMax) == 8) {
         _type = 4;
         number[13] = '\0';
-        GetUpdate(UPDATE(0,
+        GetUpdate(UPDATE(0, 0,
                          Phone(number),
                          serviceFilter,
                          Phone(),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 4);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 6);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREservice=[%1d]sum=[%d,%d]",
+               number,
+               &serviceFilter,
+               &sumMin,
+               &sumMax) == 4) {
+        _type = 4;
+        number[13] = '\0';
+        GetUpdate(UPDATE(0, 0,
+                         Phone(number),
+                         serviceFilter,
+                         Phone(),
+                         Date(),
+                         Date(), sumMin, sumMax), 7);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREphone=[%13s]", number, numberFilter) == 2) {
         _type = 4;
         number[13] = '\0';
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(0, Phone(number), 0, Phone(numberFilter), Date(), Date()), 5);
+        GetUpdate(UPDATE(0, 0, Phone(number), 0, Phone(numberFilter), Date(), Date(), 0, 0), 8);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREservice=[%1d]", number, &serviceFilter) == 2) {
         _type = 4;
         number[13] = '\0';
-        GetUpdate(UPDATE(0, Phone(number), serviceFilter, Phone(), Date(), Date()), 6);
+        GetUpdate(UPDATE(0, 0, Phone(number), serviceFilter, Phone(), Date(), Date(), 0, 0), 9);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREperiod=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -344,12 +474,40 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &dayMax) == 7) {
         _type = 4;
         number[13] = '\0';
-        GetUpdate(UPDATE(0,
+        GetUpdate(UPDATE(0, 0,
                          Phone(number),
                          0,
                          Phone(),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 7);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 10);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEphone=[%13s]WHEREsum=[%d,%d]", number, &sumMin, &sumMax) == 3) {
+        _type = 4;
+        number[13] = '\0';
+        GetUpdate(UPDATE(0, 0, Phone(number), serviceFilter, Phone(), Date(), Date(), sumMin, sumMax), 11);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]sum=[%d,%d]",
+               &service,
+               numberFilter,
+               &serviceFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax,
+               &sumMin,
+               &sumMax) == 11) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(0, service,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), sumMin, sumMax), 12);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -364,12 +522,12 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &dayMax) == 9) {
         _type = 4;
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(service,
+        GetUpdate(UPDATE(0, service,
                          Phone(),
                          serviceFilter,
                          Phone(numberFilter),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 8);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 13);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]service=[%1d]",
@@ -378,11 +536,11 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &serviceFilter) == 3) {
         _type = 4;
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(service,
+        GetUpdate(UPDATE(0, service,
                          Phone(),
                          serviceFilter,
                          Phone(numberFilter),
-                         Date(), Date()), 9);
+                         Date(), Date(), 0, 0), 14);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -396,12 +554,25 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &dayMax) == 8) {
         _type = 4;
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(service,
+        GetUpdate(UPDATE(0, service,
                          Phone(),
                          0,
                          Phone(numberFilter),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 10);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 15);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]sum=[%d,%d]",
+               &service,
+               numberFilter,
+               &sumMin, &sumMax) == 4) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(0, service,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(), Date(), sumMin, sumMax), 16);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREservice=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -414,23 +585,36 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &monthMax,
                &dayMax) == 8) {
         _type = 4;
-        GetUpdate(UPDATE(service,
+        GetUpdate(UPDATE(0, service,
                          Phone(),
                          serviceFilter,
                          Phone(),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 11);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 17);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREservice=[%1d]sum=[%d,%d]",
+               &service,
+               &serviceFilter,
+               &sumMin, &sumMax) == 4) {
+        _type = 4;
+        GetUpdate(UPDATE(0, service,
+                         Phone(),
+                         serviceFilter,
+                         Phone(),
+                         Date(),
+                         Date(), sumMin, sumMax), 18);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREphone=[%13s]", &service, numberFilter) == 2) {
         _type = 4;
         numberFilter[13] = '\0';
-        GetUpdate(UPDATE(service, Phone(), 0, Phone(numberFilter), Date(), Date()), 12);
+        GetUpdate(UPDATE(0, service, Phone(), 0, Phone(numberFilter), Date(), Date(), 0, 0), 19);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREservice=[%d]", &service, &serviceFilter) == 2) {
         _type = 4;
-        GetUpdate(UPDATE(service, Phone(), serviceFilter, Phone(), Date(), Date()), 13);
+        GetUpdate(UPDATE(0, service, Phone(), serviceFilter, Phone(), Date(), Date(), 0, 0), 20);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREperiod=[%4d-%02d-%02d,%4d-%02d-%02d]",
@@ -442,23 +626,198 @@ void Parser::ParseRequest(const char *request, int &fd) {
                &monthMax,
                &dayMax) == 7) {
         _type = 4;
-        GetUpdate(UPDATE(service,
+        GetUpdate(UPDATE(0, service,
                          Phone(),
                          0,
                          Phone(),
                          Date(yearMin, monthMin,dayMin, 0, 0, 0),
-                         Date(yearMax, monthMax, dayMax, 23, 59, 59)), 14);
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 21);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEservice=[%1d]WHEREsum=[%d,%d]",
+               &service,
+               &sumMin, &sumMax) == 3) {
+        _type = 4;
+        GetUpdate(UPDATE(0, service,
+                         Phone(),
+                         0,
+                         Phone(),
+                         Date(),
+                         Date(), sumMin, sumMax), 22);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]sum=[%d,%d]",
+               &sum,
+               numberFilter,
+               &serviceFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax,
+               &sumMin,
+               &sumMax) == 11) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), sumMin, sumMax), 23);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]service=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
+               &sum,
+               numberFilter,
+               &serviceFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax) == 9) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 24);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]service=[%1d]",
+               &sum,
+               numberFilter,
+               &serviceFilter) == 3) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(), Date(), 0, 0), 25);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
+               &sum,
+               numberFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax) == 8) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         0,
+                         Phone(numberFilter),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 26);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]sum=[%d,%d]",
+               &sum,
+               numberFilter,
+               &sumMin, &sumMax) == 4) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(numberFilter),
+                         Date(), Date(), sumMin, sumMax), 27);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREservice=[%1d]period=[%4d-%02d-%02d,%4d-%02d-%02d]",
+               &sum,
+               &serviceFilter,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax) == 8) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 28);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREservice=[%1d]sum=[%d,%d]",
+               &sum,
+               &serviceFilter,
+               &sumMin, &sumMax) == 4) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         serviceFilter,
+                         Phone(),
+                         Date(),
+                         Date(), sumMin, sumMax), 29);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREphone=[%13s]", &sum, numberFilter) == 2) {
+        _type = 4;
+        numberFilter[13] = '\0';
+        GetUpdate(UPDATE(sum, 0, Phone(), 0, Phone(numberFilter), Date(), Date(), 0, 0), 30);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREservice=[%d]", &sum, &serviceFilter) == 2) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0, Phone(), serviceFilter, Phone(), Date(), Date(), 0, 0), 31);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREperiod=[%4d-%02d-%02d,%4d-%02d-%02d]",
+               &sum,
+               &yearMin,
+               &monthMin,
+               &dayMin,
+               &yearMax,
+               &monthMax,
+               &dayMax) == 7) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         0,
+                         Phone(),
+                         Date(yearMin, monthMin,dayMin, 0, 0, 0),
+                         Date(yearMax, monthMax, dayMax, 23, 59, 59), 0, 0), 32);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]WHEREsum=[%d,%d]",
+               &sum,
+               &sumMin, &sumMax) == 3) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0,
+                         Phone(),
+                         0,
+                         Phone(),
+                         Date(),
+                         Date(), sumMin, sumMax), 33);
         return;
     }
     if (sscanf(&v[0], "UPDATEphone=[%13s]", number) == 1) {
         _type = 4;
         number[13] = '\0';
-        GetUpdate(UPDATE(0, Phone(number), 0, Phone(), Date(), Date()), 15);
+        GetUpdate(UPDATE(0, 0, Phone(number), 0, Phone(), Date(), Date(), 0, 0), 34);
         return;
     }
     if (sscanf(&v[0], "UPDATEservice=[%1d]", &service) == 1) {
         _type = 4;
-        GetUpdate(UPDATE(service, Phone(), 0, Phone(), Date(), Date()), 16);
+        GetUpdate(UPDATE(0, service, Phone(), 0, Phone(), Date(), Date(), 0, 0), 35);
+        return;
+    }
+    if (sscanf(&v[0], "UPDATEsum=[%lf]", &sum) == 1) {
+        _type = 4;
+        GetUpdate(UPDATE(sum, 0, Phone(), 0, Phone(), Date(), Date(), 0, 0), 36);
         return;
     }
     // END UPDATES
@@ -470,11 +829,23 @@ void Parser::ParseRequest(const char *request, int &fd) {
 void Parser::GetSelect(SELECT select, int flag) {
     _responseVector.clear();
 	if (_type == 1) {
-        if (flag == 8) {
+        if (flag == 12) {
             _responseVector = _AllVector;
             return;
         }
         if (flag == 1) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == select.GetPhone() &&
+                    _AllVector[i].GetService() == select.GetService() &&
+                    _AllVector[i].GetDate() <= select.GetMaxDate() &&
+                    _AllVector[i].GetDate() >= select.GetMinDate() &&
+                    _AllVector[i].GetSum() <= select.GetMaxSum() &&
+                    _AllVector[i].GetSum() <= select.GetMinSum()
+                        )
+                    _responseVector.push_back(_AllVector[i]);
+            return;
+        }
+        if (flag == 2) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == select.GetPhone() &&
                     _AllVector[i].GetService() == select.GetService() &&
@@ -484,7 +855,7 @@ void Parser::GetSelect(SELECT select, int flag) {
                     _responseVector.push_back(_AllVector[i]);
             return;
         }
-        if (flag == 2) {
+        if (flag == 3) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == select.GetPhone() &&
                     _AllVector[i].GetService() == select.GetService()
@@ -492,18 +863,9 @@ void Parser::GetSelect(SELECT select, int flag) {
                     _responseVector.push_back(_AllVector[i]);
             return;
         }
-        if (flag == 3) {
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == select.GetPhone() &&
-                    _AllVector[i].GetDate() <= select.GetMaxDate() &&
-                    _AllVector[i].GetDate() >= select.GetMinDate()
-                        )
-                    _responseVector.push_back(_AllVector[i]);
-            return;
-        }
         if (flag == 4) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == select.GetService() &&
+                if (_AllVector[i].GetPhone() == select.GetPhone() &&
                     _AllVector[i].GetDate() <= select.GetMaxDate() &&
                     _AllVector[i].GetDate() >= select.GetMinDate()
                         )
@@ -512,20 +874,55 @@ void Parser::GetSelect(SELECT select, int flag) {
         }
         if (flag == 5) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == select.GetPhone())
+                if (_AllVector[i].GetPhone() == select.GetPhone() &&
+                    _AllVector[i].GetSum() <= select.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= select.GetMinSum()
+                        )
                     _responseVector.push_back(_AllVector[i]);
             return;
         }
         if (flag == 6) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == select.GetService())
+                if (_AllVector[i].GetService() == select.GetService() &&
+                    _AllVector[i].GetDate() <= select.GetMaxDate() &&
+                    _AllVector[i].GetDate() >= select.GetMinDate()
+                        )
                     _responseVector.push_back(_AllVector[i]);
             return;
         }
         if (flag == 7) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == select.GetService() &&
+                    _AllVector[i].GetSum() <= select.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= select.GetMinSum()
+                        )
+                    _responseVector.push_back(_AllVector[i]);
+            return;
+        }
+        if (flag == 8) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == select.GetPhone())
+                    _responseVector.push_back(_AllVector[i]);
+            return;
+        }
+        if (flag == 9) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == select.GetService())
+                    _responseVector.push_back(_AllVector[i]);
+            return;
+        }
+        if (flag == 10) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetDate() >= select.GetMinDate() &&
                     _AllVector[i].GetDate() <= select.GetMaxDate()
+                        )
+                    _responseVector.push_back(_AllVector[i]);
+            return;
+        }
+        if (flag == 11) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetSum() <= select.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= select.GetMinSum()
                         )
                     _responseVector.push_back(_AllVector[i]);
             return;
@@ -547,7 +944,8 @@ void Parser::GetInsert(INSERT insert) {
 
 void Parser::GetDelete(DELETE delete_, int flag) {
     if (_type == 3) {
-        if (flag == 8) {
+        if (flag == 12) {
+            _total = _AllVector.size();
             _AllVector.clear();
             return;
         }
@@ -556,24 +954,41 @@ void Parser::GetDelete(DELETE delete_, int flag) {
                 if (_AllVector[i].GetPhone() == delete_.GetPhone() &&
                     _AllVector[i].GetService() == delete_.GetService() &&
                     _AllVector[i].GetDate() <= delete_.GetMaxDate() &&
-                    _AllVector[i].GetDate() >= delete_.GetMinDate()
+                    _AllVector[i].GetDate() >= delete_.GetMinDate() &&
+                    _AllVector[i].GetSum() <= delete_.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= delete_.GetMinSum()
                         ) {
                     _AllVector.erase(_AllVector.begin() + i);
                     --i;
+                    ++_total;
                 }
             return;
         }
         if (flag == 2) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == delete_.GetPhone() &&
-                    _AllVector[i].GetService() == delete_.GetService()
+                    _AllVector[i].GetService() == delete_.GetService() &&
+                    _AllVector[i].GetDate() <= delete_.GetMaxDate() &&
+                    _AllVector[i].GetDate() >= delete_.GetMinDate()
                         ) {
                     _AllVector.erase(_AllVector.begin() + i);
                     --i;
+                    ++_total;
                 }
             return;
         }
         if (flag == 3) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == delete_.GetPhone() &&
+                    _AllVector[i].GetService() == delete_.GetService()
+                        ) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 4) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == delete_.GetPhone() &&
                     _AllVector[i].GetDate() <= delete_.GetMaxDate() &&
@@ -581,10 +996,23 @@ void Parser::GetDelete(DELETE delete_, int flag) {
                         ) {
                     _AllVector.erase(_AllVector.begin() + i);
                     --i;
+                    ++_total;
                 }
             return;
         }
-        if (flag == 4) {
+        if (flag == 5) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == delete_.GetPhone() &&
+                    _AllVector[i].GetSum() <= delete_.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= delete_.GetMinSum()
+                        ) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 6) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetService() == delete_.GetService() &&
                     _AllVector[i].GetDate() <= delete_.GetMaxDate() &&
@@ -592,32 +1020,59 @@ void Parser::GetDelete(DELETE delete_, int flag) {
                         ) {
                     _AllVector.erase(_AllVector.begin() + i);
                     --i;
-                }
-            return;
-        }
-        if (flag == 5) {
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == delete_.GetPhone()) {
-                    _AllVector.erase(_AllVector.begin() + i);
-                    --i;
-                }
-            return;
-        }
-        if (flag == 6) {
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == delete_.GetService()) {
-                    _AllVector.erase(_AllVector.begin() + i);
-                    --i;
+                    ++_total;
                 }
             return;
         }
         if (flag == 7) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == delete_.GetService() &&
+                    _AllVector[i].GetSum() <= delete_.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= delete_.GetMinSum()
+                        ) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 8) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == delete_.GetPhone()) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 9) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == delete_.GetService()) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 10) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetDate() <= delete_.GetMaxDate() &&
                     _AllVector[i].GetDate() >= delete_.GetMinDate()
                         ) {
                     _AllVector.erase(_AllVector.begin() + i);
                     --i;
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 11) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetSum() <= delete_.GetMaxSum() &&
+                    _AllVector[i].GetSum() >= delete_.GetMinSum()
+                        ) {
+                    _AllVector.erase(_AllVector.begin() + i);
+                    --i;
+                    ++_total;
                 }
             return;
         }
@@ -634,133 +1089,400 @@ void Parser::GetUpdate(UPDATE update, int flag) {
                 if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
                     _AllVector[i].GetService() == update.GetFilterService() &&
                     _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
-                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
                     _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
             return;
         }
         if (flag == 2) {
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == update.GetFilterService() &&
-                    _AllVector[i].GetPhone() == update.GetFilterPhone()
-                        )
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 3) {
-            Billing billing;
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
-                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
-                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 4) {
-            Billing billing;
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == update.GetFilterService() &&
-                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
-                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 5) {
-            Billing billing;
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == update.GetFilterPhone())
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 6) {
-            Billing billing;
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == update.GetFilterService())
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 7) {
-            Billing billing;
-            for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetDate() >= update.GetFilterDateMin() &&
-                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangePhone(update.GetPhone());
-            return;
-        }
-        if (flag == 8) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
                     _AllVector[i].GetService() == update.GetFilterService() &&
                     _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
                     _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangeService(update.GetService());
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
             return;
         }
-        if (flag == 9) {
+        if (flag == 3) {
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetService() == update.GetFilterService() &&
                     _AllVector[i].GetPhone() == update.GetFilterPhone()
-                        )
-                    _AllVector[i].ChangeService(update.GetService());
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
             return;
         }
-        if (flag == 10) {
+        if (flag == 4) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
                     _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
                     _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangeService(update.GetService());
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+            }
             return;
         }
-        if (flag == 11) {
+        if (flag == 5) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 6) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetService() == update.GetFilterService() &&
                     _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
                     _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
-                    _AllVector[i].ChangeService(update.GetService());
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 7) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 8) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone()) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 9) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService()) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 10) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 11) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangePhone(update.GetPhone());
+                    ++_total;
+                }
             return;
         }
         if (flag == 12) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetPhone() == update.GetFilterPhone())
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
                     _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
             return;
         }
         if (flag == 13) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
-                if (_AllVector[i].GetService() == update.GetFilterService())
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
                     _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
             return;
         }
         if (flag == 14) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetPhone() == update.GetFilterPhone()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 15) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 16) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 17) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 18) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 19) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone()) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 20) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService()) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 21) {
             Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
                 if (_AllVector[i].GetDate() >= update.GetFilterDateMin() &&
                     _AllVector[i].GetDate() <= update.GetFilterDateMax()
-                        )
+                        ) {
                     _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
             return;
         }
-        if (flag == 15) {
+        if (flag == 22) {
+            Billing billing;
             for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeService(update.GetService());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 23) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 24) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 25) {
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetPhone() == update.GetFilterPhone()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 26) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 27) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 28) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 29) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService() &&
+                    _AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 30) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetPhone() == update.GetFilterPhone()) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 31) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetService() == update.GetFilterService()) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 32) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetDate() >= update.GetFilterDateMin() &&
+                    _AllVector[i].GetDate() <= update.GetFilterDateMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+        if (flag == 33) {
+            Billing billing;
+            for (size_t i = 0; i < _AllVector.size(); ++i)
+                if (_AllVector[i].GetSum() >= update.GetFilterSumMin() &&
+                    _AllVector[i].GetSum() <= update.GetFilterSumMax()
+                        ) {
+                    _AllVector[i].ChangeSum(update.GetSum());
+                    ++_total;
+                }
+            return;
+        }
+
+
+
+        if (flag == 34) {
+            for (size_t i = 0; i < _AllVector.size(); ++i) {
                 _AllVector[i].ChangePhone(update.GetPhone());
+                ++_total;
+            }
             return;
         }
-        if (flag == 16) {
-            for (size_t i = 0; i < _AllVector.size(); ++i)
+        if (flag == 35) {
+            for (size_t i = 0; i < _AllVector.size(); ++i) {
                 _AllVector[i].ChangeService(update.GetService());
+                ++_total;
+            }
             return;
+        }
+        if (flag == 36) {
+            for (size_t i = 0; i < _AllVector.size(); ++i) {
+                _AllVector[i].ChangeSum(update.GetSum());
+                ++_total;
+            }
         }
     }
     else
@@ -792,5 +1514,9 @@ std::vector<Billing> Parser::GetResponse() const {
 
 int Parser::GetType() const {
     return _type;
+}
+
+size_t Parser::GetTotal() const {
+    return _total;
 }
 

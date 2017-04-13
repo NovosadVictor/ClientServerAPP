@@ -6,18 +6,23 @@ UPDATE::UPDATE() {
     _phone = Phone();
 }
 
-UPDATE::UPDATE(int service,
+UPDATE::UPDATE(double sum, int service,
                Phone phone,
                int serviceFilter,
                Phone phoneFilter,
                Date dateMinFilter,
-               Date dateMaxFilter) {
+               Date dateMaxFilter,
+               int sumMinFilter,
+               int sumMaxFilter) {
+    _sum = sum;
     _service = service;
     _phone = phone;
     _serviceFilter = serviceFilter;
     _phoneFilter = phoneFilter;
     _dateMinFilter = dateMinFilter;
     _dateMaxFilter = dateMaxFilter;
+    _sumMinFilter = sumMinFilter;
+    _sumMaxFilter = sumMaxFilter;
 }
 
 int UPDATE::GetService() const {
@@ -42,4 +47,16 @@ Date UPDATE::GetFilterDateMin() const {
 
 Date UPDATE::GetFilterDateMax() const {
     return _dateMaxFilter;
+}
+
+int UPDATE::GetFilterSumMin() const {
+    return _sumMinFilter;
+}
+
+int UPDATE::GetFilterSumMax() const {
+    return _sumMaxFilter;
+}
+
+double UPDATE::GetSum() const {
+    return _sum;
 }

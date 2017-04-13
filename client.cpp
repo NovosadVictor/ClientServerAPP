@@ -66,6 +66,13 @@ int main(int argc, char **argv) {
                     sscanf(&response[4], "quantity = %d", &quantity);
                     break;
                 }
+                if (i == 1 && (status == 3 || status == 4)) {
+                    sscanf(&response[0], "%d", &quantity);
+                    for (size_t j = 7; j < length; ++j)
+                        std::cout << response[j];
+                    std::cout << '\n' << "    Total: " << quantity << std::endl;
+                    break;
+                }
                 for (size_t j = 0; j < length; ++j)
                     std::cout << response[j];
                 std::cout << std::endl;

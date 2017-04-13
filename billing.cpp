@@ -38,6 +38,10 @@ void Billing::ChangePhone(Phone phone) {
 	_phone = phone;
 }
 
+void Billing::ChangeSum(double sum) {
+	_sum = sum;
+}
+
 int Billing::GetService() const {
 	return _service;
 }

@@ -8,16 +8,20 @@
 class DELETE {
 public:
     DELETE();
-    DELETE(int service, Phone phone, Date dateMin, Date dateMax);
+    DELETE(int service, Phone phone, Date dateMin, Date dateMax, int sumMin, int sumMax);
     int GetService() const;
     Date GetMinDate() const;
     Date GetMaxDate() const;
-    Phone GetPhone();
+    Phone GetPhone() const;
+    int GetMinSum() const;
+    int GetMaxSum() const;
 private:
-    Date _dateMin;
-    Date _dateMax;
     Phone _phone;
     int _service;
+    Date _dateMin;
+    Date _dateMax;
+    int _sumMin;
+    int _sumMax;
 };
 
 #endif

@@ -28,11 +28,13 @@ DELETE::DELETE() {
     _phone = Phone("7777777777");
 }
 
-DELETE::DELETE(int service, Phone phone, Date dateMin, Date dateMax) {
+DELETE::DELETE(int service, Phone phone, Date dateMin, Date dateMax, int sumMin, int sumMax) {
     _service = service;
     _phone = phone;
     _dateMin = _dateMin;
     _dateMax = dateMax;
+    _sumMin = sumMin;
+    _sumMax = sumMax;
 }
 
 int DELETE::GetService() const {
@@ -47,6 +49,14 @@ Date DELETE::GetMaxDate() const {
     return _dateMax;
 }
 
-Phone DELETE::GetPhone() {
+Phone DELETE::GetPhone() const{
     return _phone;
+}
+
+int DELETE::GetMinSum() const {
+    return _sumMin;
+}
+
+int DELETE::GetMaxSum() const {
+    return _sumMax;
 }

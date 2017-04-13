@@ -8,26 +8,34 @@
 class UPDATE {
 public:
     UPDATE();
-    UPDATE(int service,
+    UPDATE(double sum, int service,
            Phone phone,
            int serviceFilter,
            Phone phoneFilter,
            Date dateMinFilter,
-           Date dateMaxFilter
+           Date dateMaxFilter,
+           int sumMinFilter,
+           int sumMaxFilter
     );
+    double GetSum() const;
     int GetService() const;
     Phone GetPhone() const;
     int GetFilterService() const;
     Phone GetFilterPhone() const;
     Date GetFilterDateMin() const;
     Date GetFilterDateMax() const;
+    int GetFilterSumMin() const;
+    int GetFilterSumMax() const;
 private:
+    double _sum;
     int _service;
     Phone _phone;
     int _serviceFilter;
     Phone _phoneFilter;
     Date _dateMinFilter;
     Date _dateMaxFilter;
+    int _sumMinFilter;
+    int _sumMaxFilter;
 };
 
 #endif

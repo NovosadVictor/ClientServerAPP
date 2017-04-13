@@ -174,15 +174,15 @@ static void loop(int sd, int fd) {
                     if (writeAll(nsd, selectAnswer, len) != (ssize_t) len)
                         throw 7;//std::invalid_argument("Cant write selectAnswer");
                     for (size_t i = 0; i < (response.GetResponse()).size(); ++i) {
-                        char selectBillings[50];
-                        snprintf(selectBillings, 50, "    %s %d %s %08f\n",
+                        char selectBillings[52];
+                        snprintf(selectBillings, 52, "    %s %d %s %05f",
                                  (response.GetResponse()[i]).GetPhone().GetNumber(),
                                  (response.GetResponse()[i]).GetService(),
                                  (response.GetResponse()[i]).GetDate().GetDate(),
                                  (response.GetResponse()[i]).GetSum()
                         );
-                        selectBillings[49] = '\0';
-                        len = 50;
+                        selectBillings[51] = '\0';
+                        len = 52;
                         if (writeAll(nsd, &len, sizeof(len)) != sizeof(len))
                             throw 7;//std::invalid_argument("Cant write length");
                         if (writeAll(nsd, selectBillings, len) != (ssize_t) len)
@@ -200,20 +200,20 @@ static void loop(int sd, int fd) {
                         throw 7;//std::invalid_argument("Cant write successAnswer");
                 }
                 if (response.GetType() == 3) {
-                    char successAnswer[35];
-                    snprintf(successAnswer, 35, "\n    User(s) successfully deleted\n");
-                    successAnswer[34] = '\0';
-                    len = 35;
+                    char successAnswer[42];
+                    snprintf(successAnswer, 42, "%07lu\n    User(s) successfully deleted\n", response.GetTotal());
+                    successAnswer[41] = '\0';
+                    len = 42;
                     if (writeAll(nsd, &len, sizeof(len)) != sizeof(len))
                         throw 7;//std::invalid_argument("Cant write length");
                     if (writeAll(nsd, successAnswer, len) != (ssize_t) len)
                         throw 7;//std::invalid_argument("Cant write successAnswer");
                 }
                 if (response.GetType() == 4) {
-                    char successAnswer[35];
-                    snprintf(successAnswer, 35, "\n    User(s) successfully updated\n");
-                    successAnswer[34] = '\0';
-                    len = 35;
+                    char successAnswer[42];
+                    snprintf(successAnswer, 42, "%07lu\n    User(s) successfully updated\n", response.GetTotal());
+                    successAnswer[41] = '\0';
+                    len = 42;
                     if (writeAll(nsd, &len, sizeof(len)) != sizeof(len))
                         throw 7;//std::invalid_argument("Cant write length");
                     if (writeAll(nsd, successAnswer, len) != (ssize_t) len)
@@ -244,4 +244,5 @@ static void loop(int sd, int fd) {
 //    }
     }
 }
+
 

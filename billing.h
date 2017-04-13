@@ -23,6 +23,7 @@ public:
 	double GetSum() const;
 	void ChangeService(int service);
 	void ChangePhone(Phone phone);
+	void ChangeSum(double sum);
 	int ReadBin(int fd);
 	int WriteBin(int fd);
 	void WriteTXT(FILE *fout);
